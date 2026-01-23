@@ -24,13 +24,14 @@ fn criterion_benchmark(c: &mut Criterion) {
         let uuid = make_uuid(i);
         let uuid = Uuid::try_from(uuid.as_str()).unwrap();
 
-        let expr = format!("((a > 0 || a < {}) && a != 0) && a == 1", N + 1);
+        let expr = format!("((a > 0 || a < {}) && a != 0) && a == 1 && s ~ r#\"^abcd$\"#", N + 1);
 
         data.push((priority, uuid, expr))
     }
 
     let mut schema = Schema::default();
     schema.add_field("a", Type::Int);
+    schema.add_field("s", Type::String);
 
     c.bench_function("Build Router", |b| {
         b.iter_with_large_drop(|| {

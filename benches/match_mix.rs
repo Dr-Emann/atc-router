@@ -26,7 +26,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     for i in 0..N {
         let expr = format!(
-            r#"(http.path == "hello{}" && http.version == "1.1") || {} || {} || {}"#,
+            r#"(http.path ~ "^hello{}$" && http.version == "1.1") || {} || {} || {}"#,
             i, "!((a == 2) && (a == 9))", "!(a == 1)", "(a == 3 && a == 4) && !(a == 5)"
         );
 
