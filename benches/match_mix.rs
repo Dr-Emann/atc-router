@@ -25,10 +25,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut router = Router::new(&schema);
 
     for i in 0..N {
-        let expr = format!(
-            r#"(http.path ~ "^hello{}$" && http.version == "1.1") || {} || {} || {}"#,
-            i, "!((a == 2) && (a == 9))", "!(a == 1)", "(a == 3 && a == 4) && !(a == 5)"
-        );
+        let expr = format!(r#"(http.path == "hello{}" && http.version == "1.1")"#, i);
 
         let uuid = make_uuid(i);
         let uuid = Uuid::try_from(uuid.as_str()).unwrap();
@@ -39,7 +36,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut ctx = Context::new(&schema);
 
     // match benchmark
-    ctx.add_value("http.path", Value::String("hello49999".to_string()));
+    ctx.add_value("http.path", Value::String("hello100".to_string()));
     ctx.add_value("http.version", Value::String("1.1".to_string()));
     ctx.add_value("a", Value::Int(3_i64));
 
@@ -49,11 +46,21 @@ fn criterion_benchmark(c: &mut Criterion) {
             assert!(is_match);
         });
     });
+    let start = std::time::Instant::now();
+    router.enable_prefilter("http.path");
+    let elapsed = start.elapsed();
+    dbg!(elapsed);
+    c.bench_function("Match With Prefilter", |b| {
+        b.iter(|| {
+            let is_match = router.execute(&mut ctx);
+            assert!(is_match);
+        });
+    });
 
     ctx.reset();
 
     // not match benchmark
-    ctx.add_value("http.path", Value::String("hello49999".to_string()));
+    ctx.add_value("http.path", Value::String("hello9999Z".to_string()));
     ctx.add_value("http.version", Value::String("1.1".to_string()));
     ctx.add_value("a", Value::Int(5_i64)); // not match
 
@@ -107,6 +114,8 @@ fn regex_vs_equals(c: &mut Criterion) {
         equals_router
             .add_matcher(0, Uuid::default(), &equals_expr)
             .unwrap();
+        regex_router.enable_prefilter("http.path");
+        equals_router.enable_prefilter("http.path");
         g.bench_with_input(BenchmarkId::new("regex", i), &regex_router, |b, router| {
             b.iter(|| {
                 let matches = router.execute(&mut ctx);
